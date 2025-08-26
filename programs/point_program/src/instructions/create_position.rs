@@ -79,7 +79,6 @@ pub fn create_position_handler(
     width: i32,
 ) -> Result<()> {
     require!(usdc_amount > 0, ErrorCode::ZeroAmount);
-
     let user_point = &mut ctx.accounts.user_points;
 
     let cpi_ctx_transfer = CpiContext::new(

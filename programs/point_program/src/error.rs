@@ -6,4 +6,6 @@ pub enum ErrorCode {
     ZeroAmount,
     #[msg("Invalid User")]
     InvalidUser,
+    #[msg("Invalid Owner")]
+    InvalidOwner,
 }

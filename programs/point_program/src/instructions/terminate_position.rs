@@ -81,6 +81,9 @@ pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()>
         ErrorCode::InvalidUser
     );
 
+    let position_data=ctx.accounts.position.load()?;
+    require!(position_data.owner==ctx.accounts.position_authority.key(),ErrorCode::InvalidOwner);
+
     let user_key = ctx.accounts.user.key();
     let signer_seeds: &[&[&[u8]]] = &[&[
         b"position_authority",
@@ -93,8 +96,8 @@ pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()>
         lb_pair: ctx.accounts.lb_pair.to_account_info(),
         bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
         bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
-        sender: ctx.accounts.position_usdc.to_account_info(),
-        rent_receiver: ctx.accounts.position_usdc.to_account_info(),
+        sender: ctx.accounts.position_authority.to_account_info(),
+        rent_receiver: ctx.accounts.user.to_account_info(),
         event_authority: ctx.accounts.event_authority.to_account_info(),
         program: ctx.accounts.dlmm_program.to_account_info(),
     };
