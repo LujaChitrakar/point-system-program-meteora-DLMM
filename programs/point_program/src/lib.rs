@@ -2,6 +2,8 @@ use anchor_lang::prelude::*;
 
 declare_id!("6uojdznPGFYevAMovWg3cdkmC8d7W1T3c69GRpwbTV2");
 
+declare_program!(dlmm);
+
 #[program]
 pub mod point_program {
     use super::*;
