@@ -46,7 +46,6 @@ pub struct CreatePosition<'info> {
     //     associated_token::authority=position_authority
     // )]
     // pub position_usdc: Account<'info, TokenAccount>,
-
     #[account(
         mut,
         seeds=[b"position_authority",user.key().as_ref()],

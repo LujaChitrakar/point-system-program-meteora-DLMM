@@ -37,13 +37,12 @@ pub struct TerminatePosition<'info> {
     #[account(mut)]
     pub position: AccountLoader<'info, Position>,
 
-    #[account(
-        mut,
-        associated_token::mint=usdc_mint,
-        associated_token::authority=position_authority
-    )]
-    pub position_usdc: Account<'info, TokenAccount>,
-
+    // #[account(
+    //     mut,
+    //     associated_token::mint=usdc_mint,
+    //     associated_token::authority=position_authority
+    // )]
+    // pub position_usdc: Account<'info, TokenAccount>,
     #[account(
         mut,
         seeds=[b"position_authority",user.key().as_ref()],
@@ -113,8 +112,8 @@ pub fn terminate_position_handler(
             .bin_array_bitmap_extension
             .as_ref()
             .map(|account| account.to_account_info()),
-        user_token_x: ctx.accounts.position_usdc.to_account_info(),
-        user_token_y: ctx.accounts.position_usdc.to_account_info(),
+        user_token_x: ctx.accounts.user_usdc.to_account_info(),
+        user_token_y: ctx.accounts.user_usdc.to_account_info(),
         reserve_x: ctx.accounts.lb_pair.to_account_info(),
         reserve_y: ctx.accounts.lb_pair.to_account_info(),
         token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
@@ -151,17 +150,17 @@ pub fn terminate_position_handler(
     );
     close_position(cpi_ctx)?;
 
-    let total_balance = ctx.accounts.position_usdc.amount;
-    let cpi_ctx_transfer = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        Transfer {
-            from: ctx.accounts.position_usdc.to_account_info(),
-            to: ctx.accounts.user_usdc.to_account_info(),
-            authority: ctx.accounts.position_authority.to_account_info(),
-        },
-        signer_seeds,
-    );
-    transfer(cpi_ctx_transfer, total_balance)?;
+    // let total_balance = ctx.accounts.user_usdc.amount;
+    // let cpi_ctx_transfer = CpiContext::new_with_signer(
+    //     ctx.accounts.token_program.to_account_info(),
+    //     Transfer {
+    //         from: ctx.accounts.position_usdc.to_account_info(),
+    //         to: ctx.accounts.user_usdc.to_account_info(),
+    //         authority: ctx.accounts.position_authority.to_account_info(),
+    //     },
+    //     signer_seeds,
+    // );
+    // transfer(cpi_ctx_transfer, total_balance)?;
 
     user_points.points = 0;
 

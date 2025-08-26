@@ -7,7 +7,7 @@ use instructions::*;
 pub mod error;
 pub mod state;
 declare_program!(dlmm);
-use crate::dlmm::types::{LiquidityParameter,BinLiquidityReduction};
+use crate::dlmm::types::{BinLiquidityReduction, LiquidityParameter};
 
 declare_id!("6uojdznPGFYevAMovWg3cdkmC8d7W1T3c69GRpwbTV2");
 
@@ -27,8 +27,11 @@ pub mod point_program {
         Ok(())
     }
 
-    pub fn terminate_position(ctx: Context<TerminatePosition>,bin_liquidity_removal:Vec<BinLiquidityReduction>) -> Result<()> {
-        terminate_position_handler(ctx,bin_liquidity_removal)?;
+    pub fn terminate_position(
+        ctx: Context<TerminatePosition>,
+        bin_liquidity_removal: Vec<BinLiquidityReduction>,
+    ) -> Result<()> {
+        terminate_position_handler(ctx, bin_liquidity_removal)?;
         Ok(())
     }
 }
