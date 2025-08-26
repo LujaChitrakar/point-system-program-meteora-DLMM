@@ -8,21 +8,19 @@ use crate::{
     dlmm::{
         self,
         accounts::Position,
-        cpi::{accounts::InitializePosition, initialize_position},
+        cpi::{accounts::ClosePosition, close_position},
     },
     error::ErrorCode,
     state::UserPoints,
 };
 
 #[derive(Accounts)]
-pub struct CreatePosition<'info> {
+pub struct TerminatePosition<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
     #[account(
-        init_if_needed,
-        payer=user,
-        space=8+UserPoints::INIT_SPACE,
+        mut,
         seeds=[b"user_position",user.key().as_ref()],
         bump
     )]
@@ -32,8 +30,7 @@ pub struct CreatePosition<'info> {
     pub position: AccountLoader<'info, Position>,
 
     #[account(
-        init_if_needed,
-        payer=user,
+        mut,
         associated_token::mint=usdc_mint,
         associated_token::authority=position_authority
     )]
@@ -59,6 +56,11 @@ pub struct CreatePosition<'info> {
     /// CHECK The pool account
     pub lb_pair: UncheckedAccount<'info>,
 
+    /// CHECK: DLMM bin array covering highest bin in user position
+    pub bin_array_upper: UncheckedAccount<'info>,
+    /// CHECK: DLMM bin array covering lowest bin in user position
+    pub bin_array_lower: UncheckedAccount<'info>,
+
     #[account(address=dlmm::ID)]
     /// CHECK DLMM program
     pub dlmm_program: UncheckedAccount<'info>,
@@ -69,28 +71,15 @@ pub struct CreatePosition<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
-pub fn create_position_handler(
-    ctx: Context<CreatePosition>,
-    usdc_amount: u64,
-    lower_bin_id: i32,
-    width: i32,
-) -> Result<()> {
-    require!(usdc_amount > 0, ErrorCode::ZeroAmount);
+pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()> {
+    let user_points = &mut ctx.accounts.user_points;
 
-    let user_point = &mut ctx.accounts.user_points;
-
-    let cpi_ctx_transfer = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        Transfer {
-            from: ctx.accounts.user_usdc.to_account_info(),
-            to: ctx.accounts.position_usdc.to_account_info(),
-            authority: ctx.accounts.user.to_account_info(),
-        },
+    require!(
+        user_points.user == ctx.accounts.user.key(),
+        ErrorCode::InvalidUser
     );
-    transfer(cpi_ctx_transfer, usdc_amount)?;
 
     let user_key = ctx.accounts.user.key();
     let signer_seeds: &[&[&[u8]]] = &[&[
@@ -99,26 +88,34 @@ pub fn create_position_handler(
         &[ctx.bumps.position_authority],
     ]];
 
-    let accounts = InitializePosition {
-        payer: ctx.accounts.user.to_account_info(),
-        lb_pair: ctx.accounts.lb_pair.to_account_info(),
+    let accounts = ClosePosition {
         position: ctx.accounts.position.to_account_info(),
-        owner: ctx.accounts.position_authority.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        rent: ctx.accounts.rent.to_account_info(),
+        lb_pair: ctx.accounts.lb_pair.to_account_info(),
+        bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
+        bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
+        sender: ctx.accounts.position_usdc.to_account_info(),
+        rent_receiver: ctx.accounts.position_usdc.to_account_info(),
         event_authority: ctx.accounts.event_authority.to_account_info(),
         program: ctx.accounts.dlmm_program.to_account_info(),
     };
-
-    let cpi_context = CpiContext::new_with_signer(
+    let cpi_ctx = CpiContext::new_with_signer(
         ctx.accounts.dlmm_program.to_account_info(),
         accounts,
         signer_seeds,
     );
+    close_position(cpi_ctx)?;
 
-    initialize_position(cpi_context, lower_bin_id, width)?;
+    let total_balance = ctx.accounts.position_usdc.amount;
+    let cpi_ctx_transfer = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        Transfer {
+            from: ctx.accounts.position_usdc.to_account_info(),
+            to: ctx.accounts.user_usdc.to_account_info(),
+            authority: ctx.accounts.position_authority.to_account_info(),
+        },
+        signer_seeds,
+    );
+    transfer(cpi_ctx_transfer, total_balance)?;
 
-    user_point.points += usdc_amount;
-    user_point.user = user_key;
     Ok(())
 }
