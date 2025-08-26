@@ -8,7 +8,11 @@ use crate::{
     dlmm::{
         self,
         accounts::Position,
-        cpi::{accounts::ClosePosition, close_position},
+        cpi::{
+            accounts::{ClosePosition, RemoveLiquidity},
+            close_position, remove_liquidity,
+        },
+        types::BinLiquidityReduction,
     },
     error::ErrorCode,
     state::UserPoints,
@@ -16,6 +20,10 @@ use crate::{
 
 #[derive(Accounts)]
 pub struct TerminatePosition<'info> {
+    #[account(mut)]
+    /// CHECK The pool account
+    pub bin_array_bitmap_extension: Option<UncheckedAccount<'info>>,
+
     #[account(mut)]
     pub user: Signer<'info>,
 
@@ -73,7 +81,10 @@ pub struct TerminatePosition<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()> {
+pub fn terminate_position_handler(
+    ctx: Context<TerminatePosition>,
+    bin_liquidity_removal: Vec<BinLiquidityReduction>,
+) -> Result<()> {
     let user_points = &mut ctx.accounts.user_points;
 
     require!(
@@ -81,8 +92,11 @@ pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()>
         ErrorCode::InvalidUser
     );
 
-    let position_data=ctx.accounts.position.load()?;
-    require!(position_data.owner==ctx.accounts.position_authority.key(),ErrorCode::InvalidOwner);
+    let position_data = ctx.accounts.position.load()?;
+    require!(
+        position_data.owner == ctx.accounts.position_authority.key(),
+        ErrorCode::InvalidOwner
+    );
 
     let user_key = ctx.accounts.user.key();
     let signer_seeds: &[&[&[u8]]] = &[&[
@@ -91,7 +105,36 @@ pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()>
         &[ctx.bumps.position_authority],
     ]];
 
-    let accounts = ClosePosition {
+    let remove_liquidity_accounts = RemoveLiquidity {
+        position: ctx.accounts.position.to_account_info(),
+        lb_pair: ctx.accounts.lb_pair.to_account_info(),
+        bin_array_bitmap_extension: ctx
+            .accounts
+            .bin_array_bitmap_extension
+            .as_ref()
+            .map(|account| account.to_account_info()),
+        user_token_x: ctx.accounts.position_usdc.to_account_info(),
+        user_token_y: ctx.accounts.position_usdc.to_account_info(),
+        reserve_x: ctx.accounts.lb_pair.to_account_info(),
+        reserve_y: ctx.accounts.lb_pair.to_account_info(),
+        token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
+        token_y_mint: ctx.accounts.usdc_mint.to_account_info(),
+        bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
+        bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
+        sender: ctx.accounts.position_authority.to_account_info(),
+        token_x_program: ctx.accounts.token_program.to_account_info(),
+        token_y_program: ctx.accounts.token_program.to_account_info(),
+        event_authority: ctx.accounts.event_authority.to_account_info(),
+        program: ctx.accounts.dlmm_program.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new_with_signer(
+        ctx.accounts.dlmm_program.to_account_info(),
+        remove_liquidity_accounts,
+        signer_seeds,
+    );
+    remove_liquidity(cpi_ctx, bin_liquidity_removal)?;
+
+    let close_position_accounts = ClosePosition {
         position: ctx.accounts.position.to_account_info(),
         lb_pair: ctx.accounts.lb_pair.to_account_info(),
         bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
@@ -103,7 +146,7 @@ pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()>
     };
     let cpi_ctx = CpiContext::new_with_signer(
         ctx.accounts.dlmm_program.to_account_info(),
-        accounts,
+        close_position_accounts,
         signer_seeds,
     );
     close_position(cpi_ctx)?;
@@ -120,7 +163,7 @@ pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()>
     );
     transfer(cpi_ctx_transfer, total_balance)?;
 
-    user_points.points=0;
+    user_points.points = 0;
 
     Ok(())
 }
