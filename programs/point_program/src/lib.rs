@@ -2,8 +2,9 @@
 use anchor_lang::prelude::*;
 
 pub mod instructions;
-use instructions::*;
+// use instructions::*;
 
+pub mod error;
 pub mod state;
 declare_program!(dlmm);
 use crate::dlmm::*;
