@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{transfer, Mint, Token, TokenAccount, Transfer},
+    token::{Mint, Token, TokenAccount},
 };
 
 use crate::{
@@ -37,12 +37,6 @@ pub struct TerminatePosition<'info> {
     #[account(mut)]
     pub position: AccountLoader<'info, Position>,
 
-    // #[account(
-    //     mut,
-    //     associated_token::mint=usdc_mint,
-    //     associated_token::authority=position_authority
-    // )]
-    // pub position_usdc: Account<'info, TokenAccount>,
     #[account(
         mut,
         seeds=[b"position_authority",user.key().as_ref()],
@@ -56,8 +50,21 @@ pub struct TerminatePosition<'info> {
         token::mint=usdc_mint
     )]
     pub user_usdc: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        token::mint=sol_mint
+    )]
+    pub user_sol: Account<'info, TokenAccount>,
 
     pub usdc_mint: Account<'info, Mint>,
+    pub sol_mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    /// CHECK: Reserve account of usdc token
+    pub reserve_usdc: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve account of sol token
+    pub reserve_sol: UncheckedAccount<'info>,
 
     #[account(mut)]
     /// CHECK The pool account
@@ -90,7 +97,6 @@ pub fn terminate_position_handler(
         user_points.user == ctx.accounts.user.key(),
         ErrorCode::InvalidUser
     );
-
     let position_data = ctx.accounts.position.load()?;
     require!(
         position_data.owner == ctx.accounts.position_authority.key(),
@@ -113,23 +119,22 @@ pub fn terminate_position_handler(
             .as_ref()
             .map(|account| account.to_account_info()),
         user_token_x: ctx.accounts.user_usdc.to_account_info(),
-        user_token_y: ctx.accounts.user_usdc.to_account_info(),
-        reserve_x: ctx.accounts.lb_pair.to_account_info(),
-        reserve_y: ctx.accounts.lb_pair.to_account_info(),
+        user_token_y: ctx.accounts.user_sol.to_account_info(),
+        reserve_x: ctx.accounts.reserve_usdc.to_account_info(),
+        reserve_y: ctx.accounts.reserve_sol.to_account_info(),
         token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
-        token_y_mint: ctx.accounts.usdc_mint.to_account_info(),
+        token_y_mint: ctx.accounts.sol_mint.to_account_info(),
         bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
         bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
-        sender: ctx.accounts.position_authority.to_account_info(),
+        sender: ctx.accounts.user.to_account_info(),
         token_x_program: ctx.accounts.token_program.to_account_info(),
         token_y_program: ctx.accounts.token_program.to_account_info(),
         event_authority: ctx.accounts.event_authority.to_account_info(),
         program: ctx.accounts.dlmm_program.to_account_info(),
     };
-    let cpi_ctx = CpiContext::new_with_signer(
+    let cpi_ctx = CpiContext::new(
         ctx.accounts.dlmm_program.to_account_info(),
         remove_liquidity_accounts,
-        signer_seeds,
     );
     remove_liquidity(cpi_ctx, bin_liquidity_removal)?;
 
@@ -150,19 +155,6 @@ pub fn terminate_position_handler(
     );
     close_position(cpi_ctx)?;
 
-    // let total_balance = ctx.accounts.user_usdc.amount;
-    // let cpi_ctx_transfer = CpiContext::new_with_signer(
-    //     ctx.accounts.token_program.to_account_info(),
-    //     Transfer {
-    //         from: ctx.accounts.position_usdc.to_account_info(),
-    //         to: ctx.accounts.user_usdc.to_account_info(),
-    //         authority: ctx.accounts.position_authority.to_account_info(),
-    //     },
-    //     signer_seeds,
-    // );
-    // transfer(cpi_ctx_transfer, total_balance)?;
-
     user_points.points = 0;
-
     Ok(())
 }

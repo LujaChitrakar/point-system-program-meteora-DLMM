@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{transfer, Mint, Token, TokenAccount, Transfer},
+    token::{Mint, Token, TokenAccount},
 };
 
 use crate::{
@@ -39,13 +39,6 @@ pub struct CreatePosition<'info> {
     #[account(mut)]
     pub position: AccountLoader<'info, Position>,
 
-    // #[account(
-    //     init_if_needed,
-    //     payer=user,
-    //     associated_token::mint=usdc_mint,
-    //     associated_token::authority=position_authority
-    // )]
-    // pub position_usdc: Account<'info, TokenAccount>,
     #[account(
         mut,
         seeds=[b"position_authority",user.key().as_ref()],
@@ -59,12 +52,25 @@ pub struct CreatePosition<'info> {
         token::mint=usdc_mint
     )]
     pub user_usdc: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        token::mint=sol_mint
+    )]
+    pub user_sol: Account<'info, TokenAccount>,
 
     pub usdc_mint: Account<'info, Mint>,
+    pub sol_mint: Account<'info, Mint>,
 
     #[account(mut)]
     /// CHECK The pool account
     pub lb_pair: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    /// CHECK: Reserve account of usdc token
+    pub reserve_usdc: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve account of sol token
+    pub reserve_sol: UncheckedAccount<'info>,
 
     /// CHECK: DLMM bin array covering highest bin in user position
     pub bin_array_upper: UncheckedAccount<'info>,
@@ -93,16 +99,6 @@ pub fn create_position_handler(
 ) -> Result<()> {
     require!(usdc_amount > 0, ErrorCode::ZeroAmount);
     let user_point = &mut ctx.accounts.user_points;
-
-    // let cpi_ctx_transfer = CpiContext::new(
-    //     ctx.accounts.token_program.to_account_info(),
-    //     Transfer {
-    //         from: ctx.accounts.user_usdc.to_account_info(),
-    //         to: ctx.accounts.position_usdc.to_account_info(),
-    //         authority: ctx.accounts.user.to_account_info(),
-    //     },
-    // );
-    // transfer(cpi_ctx_transfer, usdc_amount)?;
 
     let user_key = ctx.accounts.user.key();
     let signer_seeds: &[&[&[u8]]] = &[&[
@@ -137,23 +133,22 @@ pub fn create_position_handler(
             .as_ref()
             .map(|account| account.to_account_info()),
         user_token_x: ctx.accounts.user_usdc.to_account_info(),
-        user_token_y: ctx.accounts.user_usdc.to_account_info(),
-        reserve_x: ctx.accounts.lb_pair.to_account_info(),
-        reserve_y: ctx.accounts.lb_pair.to_account_info(),
+        user_token_y: ctx.accounts.user_sol.to_account_info(),
+        reserve_x: ctx.accounts.reserve_usdc.to_account_info(),
+        reserve_y: ctx.accounts.reserve_sol.to_account_info(),
         token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
-        token_y_mint: ctx.accounts.usdc_mint.to_account_info(),
+        token_y_mint: ctx.accounts.sol_mint.to_account_info(),
         bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
         bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
-        sender: ctx.accounts.position_authority.to_account_info(),
+        sender: ctx.accounts.user.to_account_info(),
         token_x_program: ctx.accounts.token_program.to_account_info(),
         token_y_program: ctx.accounts.token_program.to_account_info(),
         event_authority: ctx.accounts.event_authority.to_account_info(),
         program: ctx.accounts.dlmm_program.to_account_info(),
     };
-    let cpi_context = CpiContext::new_with_signer(
+    let cpi_context = CpiContext::new(
         ctx.accounts.dlmm_program.to_account_info(),
         add_liquidity_accounts,
-        signer_seeds,
     );
     add_liquidity(cpi_context, liquidity_parameter)?;
 
