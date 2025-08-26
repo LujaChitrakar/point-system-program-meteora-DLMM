@@ -39,13 +39,13 @@ pub struct CreatePosition<'info> {
     #[account(mut)]
     pub position: AccountLoader<'info, Position>,
 
-    #[account(
-        init_if_needed,
-        payer=user,
-        associated_token::mint=usdc_mint,
-        associated_token::authority=position_authority
-    )]
-    pub position_usdc: Account<'info, TokenAccount>,
+    // #[account(
+    //     init_if_needed,
+    //     payer=user,
+    //     associated_token::mint=usdc_mint,
+    //     associated_token::authority=position_authority
+    // )]
+    // pub position_usdc: Account<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -95,15 +95,15 @@ pub fn create_position_handler(
     require!(usdc_amount > 0, ErrorCode::ZeroAmount);
     let user_point = &mut ctx.accounts.user_points;
 
-    let cpi_ctx_transfer = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        Transfer {
-            from: ctx.accounts.user_usdc.to_account_info(),
-            to: ctx.accounts.position_usdc.to_account_info(),
-            authority: ctx.accounts.user.to_account_info(),
-        },
-    );
-    transfer(cpi_ctx_transfer, usdc_amount)?;
+    // let cpi_ctx_transfer = CpiContext::new(
+    //     ctx.accounts.token_program.to_account_info(),
+    //     Transfer {
+    //         from: ctx.accounts.user_usdc.to_account_info(),
+    //         to: ctx.accounts.position_usdc.to_account_info(),
+    //         authority: ctx.accounts.user.to_account_info(),
+    //     },
+    // );
+    // transfer(cpi_ctx_transfer, usdc_amount)?;
 
     let user_key = ctx.accounts.user.key();
     let signer_seeds: &[&[&[u8]]] = &[&[
@@ -137,8 +137,8 @@ pub fn create_position_handler(
             .bin_array_bitmap_extension
             .as_ref()
             .map(|account| account.to_account_info()),
-        user_token_x: ctx.accounts.position_usdc.to_account_info(),
-        user_token_y: ctx.accounts.position_usdc.to_account_info(),
+        user_token_x: ctx.accounts.user_usdc.to_account_info(),
+        user_token_y: ctx.accounts.user_usdc.to_account_info(),
         reserve_x: ctx.accounts.lb_pair.to_account_info(),
         reserve_y: ctx.accounts.lb_pair.to_account_info(),
         token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
