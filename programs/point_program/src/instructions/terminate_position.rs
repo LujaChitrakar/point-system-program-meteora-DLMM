@@ -120,5 +120,7 @@ pub fn terminate_position_handler(ctx: Context<TerminatePosition>) -> Result<()>
     );
     transfer(cpi_ctx_transfer, total_balance)?;
 
+    user_points.points=0;
+
     Ok(())
 }
