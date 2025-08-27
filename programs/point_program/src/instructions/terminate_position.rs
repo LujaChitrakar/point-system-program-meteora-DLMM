@@ -89,7 +89,7 @@ pub struct TerminatePosition<'info> {
 
 pub fn terminate_position_handler(
     ctx: Context<TerminatePosition>,
-    bin_liquidity_removal: Vec<BinLiquidityReduction>,
+    // bin_liquidity_removal: Vec<BinLiquidityReduction>,
 ) -> Result<()> {
     let user_points = &mut ctx.accounts.user_points;
 
@@ -110,33 +110,33 @@ pub fn terminate_position_handler(
         &[ctx.bumps.position_authority],
     ]];
 
-    let remove_liquidity_accounts = RemoveLiquidity {
-        position: ctx.accounts.position.to_account_info(),
-        lb_pair: ctx.accounts.lb_pair.to_account_info(),
-        bin_array_bitmap_extension: ctx
-            .accounts
-            .bin_array_bitmap_extension
-            .as_ref()
-            .map(|account| account.to_account_info()),
-        user_token_x: ctx.accounts.user_usdc.to_account_info(),
-        user_token_y: ctx.accounts.user_sol.to_account_info(),
-        reserve_x: ctx.accounts.reserve_usdc.to_account_info(),
-        reserve_y: ctx.accounts.reserve_sol.to_account_info(),
-        token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
-        token_y_mint: ctx.accounts.sol_mint.to_account_info(),
-        bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
-        bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
-        sender: ctx.accounts.user.to_account_info(),
-        token_x_program: ctx.accounts.token_program.to_account_info(),
-        token_y_program: ctx.accounts.token_program.to_account_info(),
-        event_authority: ctx.accounts.event_authority.to_account_info(),
-        program: ctx.accounts.dlmm_program.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new(
-        ctx.accounts.dlmm_program.to_account_info(),
-        remove_liquidity_accounts,
-    );
-    remove_liquidity(cpi_ctx, bin_liquidity_removal)?;
+    // let remove_liquidity_accounts = RemoveLiquidity {
+    //     position: ctx.accounts.position.to_account_info(),
+    //     lb_pair: ctx.accounts.lb_pair.to_account_info(),
+    //     bin_array_bitmap_extension: ctx
+    //         .accounts
+    //         .bin_array_bitmap_extension
+    //         .as_ref()
+    //         .map(|account| account.to_account_info()),
+    //     user_token_x: ctx.accounts.user_usdc.to_account_info(),
+    //     user_token_y: ctx.accounts.user_sol.to_account_info(),
+    //     reserve_x: ctx.accounts.reserve_usdc.to_account_info(),
+    //     reserve_y: ctx.accounts.reserve_sol.to_account_info(),
+    //     token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
+    //     token_y_mint: ctx.accounts.sol_mint.to_account_info(),
+    //     bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
+    //     bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
+    //     sender: ctx.accounts.user.to_account_info(),
+    //     token_x_program: ctx.accounts.token_program.to_account_info(),
+    //     token_y_program: ctx.accounts.token_program.to_account_info(),
+    //     event_authority: ctx.accounts.event_authority.to_account_info(),
+    //     program: ctx.accounts.dlmm_program.to_account_info(),
+    // };
+    // let cpi_ctx = CpiContext::new(
+    //     ctx.accounts.dlmm_program.to_account_info(),
+    //     remove_liquidity_accounts,
+    // );
+    // remove_liquidity(cpi_ctx, bin_liquidity_removal)?;
 
     let close_position_accounts = ClosePosition {
         position: ctx.accounts.position.to_account_info(),

@@ -29,9 +29,11 @@ pub mod point_program {
 
     pub fn terminate_position(
         ctx: Context<TerminatePosition>,
-        bin_liquidity_removal: Vec<BinLiquidityReduction>,
+        // bin_liquidity_removal: Vec<BinLiquidityReduction>,S
     ) -> Result<()> {
-        terminate_position_handler(ctx, bin_liquidity_removal)?;
+        terminate_position_handler(ctx,
+            //  bin_liquidity_removalS
+            )?;
         Ok(())
     }
 }
