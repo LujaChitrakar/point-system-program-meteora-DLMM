@@ -6,13 +6,10 @@ use anchor_spl::{
 
 use crate::{
     dlmm::{
-        self,
-        accounts::Position,
-        cpi::{
-            accounts::{AddLiquidity, InitializePosition},
-            add_liquidity, initialize_position,
-        },
-        types::LiquidityParameter,
+        self, accounts::Position, cpi::{
+            accounts::{ InitializePosition,AddLiquidityOneSide},
+            add_liquidity_one_side, initialize_position,
+        }, types::LiquidityOneSideParameter
     },
     error::ErrorCode,
     state::UserPoints,
@@ -52,14 +49,7 @@ pub struct CreatePosition<'info> {
         token::mint=usdc_mint
     )]
     pub user_usdc: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        token::mint=sol_mint
-    )]
-    pub user_sol: Account<'info, TokenAccount>,
-
     pub usdc_mint: Account<'info, Mint>,
-    pub sol_mint: Account<'info, Mint>,
 
     #[account(mut)]
     /// CHECK The pool account
@@ -67,10 +57,7 @@ pub struct CreatePosition<'info> {
 
     #[account(mut)]
     /// CHECK: Reserve account of usdc token
-    pub reserve_usdc: UncheckedAccount<'info>,
-    #[account(mut)]
-    /// CHECK: Reserve account of sol token
-    pub reserve_sol: UncheckedAccount<'info>,
+    pub reserve: UncheckedAccount<'info>,
 
     /// CHECK: DLMM bin array covering highest bin in user position
     pub bin_array_upper: UncheckedAccount<'info>,
@@ -95,7 +82,7 @@ pub fn create_position_handler(
     usdc_amount: u64,
     lower_bin_id: i32,
     width: i32,
-    liquidity_parameter: LiquidityParameter,
+    liquidity_parameter: LiquidityOneSideParameter,
 ) -> Result<()> {
     require!(usdc_amount > 0, ErrorCode::ZeroAmount);
     let user_point = &mut ctx.accounts.user_points;
@@ -124,7 +111,7 @@ pub fn create_position_handler(
     );
     initialize_position(cpi_context, lower_bin_id, width)?;
 
-    let add_liquidity_accounts = AddLiquidity {
+    let add_liquidity_accounts = AddLiquidityOneSide {
         position: ctx.accounts.position.to_account_info(),
         lb_pair: ctx.accounts.lb_pair.to_account_info(),
         bin_array_bitmap_extension: ctx
@@ -132,25 +119,22 @@ pub fn create_position_handler(
             .bin_array_bitmap_extension
             .as_ref()
             .map(|account| account.to_account_info()),
-        user_token_x: ctx.accounts.user_usdc.to_account_info(),
-        user_token_y: ctx.accounts.user_sol.to_account_info(),
-        reserve_x: ctx.accounts.reserve_usdc.to_account_info(),
-        reserve_y: ctx.accounts.reserve_sol.to_account_info(),
-        token_x_mint: ctx.accounts.usdc_mint.to_account_info(),
-        token_y_mint: ctx.accounts.sol_mint.to_account_info(),
+        user_token: ctx.accounts.user_usdc.to_account_info(),
+        reserve: ctx.accounts.reserve.to_account_info(),
+        token_mint: ctx.accounts.usdc_mint.to_account_info(),
         bin_array_lower: ctx.accounts.bin_array_lower.to_account_info(),
         bin_array_upper: ctx.accounts.bin_array_upper.to_account_info(),
         sender: ctx.accounts.user.to_account_info(),
-        token_x_program: ctx.accounts.token_program.to_account_info(),
-        token_y_program: ctx.accounts.token_program.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info(),
         event_authority: ctx.accounts.event_authority.to_account_info(),
         program: ctx.accounts.dlmm_program.to_account_info(),
+        
     };
     let cpi_context = CpiContext::new(
         ctx.accounts.dlmm_program.to_account_info(),
         add_liquidity_accounts,
     );
-    add_liquidity(cpi_context, liquidity_parameter)?;
+    add_liquidity_one_side(cpi_context,liquidity_parameter)?;
 
     user_point.points += usdc_amount;
     user_point.user = user_key;

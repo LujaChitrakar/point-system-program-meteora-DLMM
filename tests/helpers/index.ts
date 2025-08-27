@@ -59,10 +59,8 @@ export const getOrCreateATAInstruction = async (
         programId,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
-
       return { ataPubKey: toAccount, ix };
     } else {
-      /* handle error */
       console.error("Error::getOrCreateATAInstruction", e);
       throw e;
     }

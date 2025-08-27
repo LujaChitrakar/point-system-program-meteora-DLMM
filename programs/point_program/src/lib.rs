@@ -7,7 +7,7 @@ use instructions::*;
 pub mod error;
 pub mod state;
 declare_program!(dlmm);
-use crate::dlmm::types::{BinLiquidityReduction, LiquidityParameter};
+use crate::dlmm::types::{BinLiquidityReduction, LiquidityOneSideParameter};
 
 declare_id!("6uojdznPGFYevAMovWg3cdkmC8d7W1T3c69GRpwbTV2");
 
@@ -21,7 +21,7 @@ pub mod point_program {
         usdc_amount: u64,
         lower_bin_id: i32,
         width: i32,
-        liquidity_parameter: LiquidityParameter,
+        liquidity_parameter: LiquidityOneSideParameter,
     ) -> Result<()> {
         create_position_handler(ctx, usdc_amount, lower_bin_id, width, liquidity_parameter)?;
         Ok(())
