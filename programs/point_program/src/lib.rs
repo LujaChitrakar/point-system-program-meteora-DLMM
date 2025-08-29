@@ -13,7 +13,6 @@ declare_id!("6uojdznPGFYevAMovWg3cdkmC8d7W1T3c69GRpwbTV2");
 
 #[program]
 pub mod point_program {
-
     use super::*;
 
     pub fn create_position(
@@ -29,7 +28,6 @@ pub mod point_program {
 
     pub fn terminate_position(
         ctx: Context<TerminatePosition>,
-        // bin_liquidity_removal: Vec<BinLiquidityReduction>,S
     ) -> Result<()> {
         terminate_position_handler(ctx,
             //  bin_liquidity_removalS
